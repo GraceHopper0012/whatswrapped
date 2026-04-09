@@ -67,6 +67,8 @@ else:
         df['sender'] = df['from_me'].apply(lambda x: self_name if x == 1 else chat_name)
         df['hour'] = df['time'].dt.hour
         df['weekday'] = df['time'].dt.weekday.map(WEEKDAY_MAPPING)
+        df['date'] = df['time'].dt.date
+        df['month'] = pd.to_datetime(df['time'].dt.to_period("M").dt.start_time)
 
         # Gruppieren & zurück in langes Format
         activity = (
@@ -80,6 +82,15 @@ else:
             .size()
             .reset_index(name='count')
         )
+
+        activity_date = (
+            df.groupby(['month', 'sender'])
+            .size()
+            .reset_index(name='count')
+        )
+
+        #activity_date = (df.groupby(['month', 'sender'], as_index=False).size().reset_index(names="count"))
+
 
         chart = alt.Chart(activity).mark_bar().encode(
             x=alt.X('hour:O', title='hour'),
@@ -98,3 +109,14 @@ else:
         ).properties(title="Activity by weekday")
 
         st.altair_chart(weekday_chart, width="stretch")
+
+        date_chart = alt.Chart(activity_date).mark_bar().encode(
+            x=alt.X('month:T', title='Month'),
+            y=alt.Y('count:Q', title='# of messages'),
+            color=alt.Color('sender:N', title='Sender'),
+            tooltip=['month', 'sender', 'count']
+        ).properties(title="Activity")
+
+        st.altair_chart(date_chart, width = "stretch")
+
+        st.line_chart(activity_date, x = "month", x_label = "month", y = 'count', y_label= "# of messages", color="sender", width = 'stretch')
