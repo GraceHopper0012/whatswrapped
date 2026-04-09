@@ -23,9 +23,9 @@ else:
     chat_user = st.session_state.chat_user
     chat_user = st.text_input("Telephone number of chat with country code and '+'", value = chat_user)
 
-    if st.button("Let's go"):
-        chat_user = chat_user[1:]
+    if st.button("Let's go") or chat_user != "":
         st.session_state.chat_user = chat_user
+        chat_user = chat_user[1:]
         query = f"""
         SELECT m.*
         FROM message m
@@ -40,7 +40,7 @@ else:
         # Daten wie vorher
         df = pd.read_sql_query(query, conn)
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df['sender'] = df['from_me'].apply(lambda x: 'me' if x == 1 else chat_user)
+        df['sender'] = df['from_me'].apply(lambda x: 'me' if x == 1 else "+" + chat_user)
         df['hour'] = df['time'].dt.hour
 
         # Gruppieren & zurück in langes Format
@@ -59,4 +59,4 @@ else:
             tooltip=['hour', 'sender', 'count']
         )
 
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width="stretch")

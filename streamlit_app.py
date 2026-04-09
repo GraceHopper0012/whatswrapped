@@ -8,6 +8,4 @@ upload_page = st.Page("upload.py", title="Upload database", icon=":material/uplo
 stats_page = st.Page("stats.py", title="Stats", icon=":material/area_chart:")
 pg = st.navigation([upload_page,stats_page])
 
-st.sidebar.selectbox("Group", ["A", "B", "C"], key="group")
-st.sidebar.slider("Size", 1, 5, key="size")
 pg.run()
