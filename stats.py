@@ -71,11 +71,17 @@ else:
         df['month'] = pd.to_datetime(df['time'].dt.to_period("M").dt.start_time)
         df['len'] = df['text_data'].dropna().apply(len)
 
-        df['cumlen'] = df.sort_values(by='len', ascending = False)['len'].cumsum(skipna=True)
+        #df['cumlen'] = df.sort_values(by='len', ascending = False)['len'].cumsum(skipna=True)
 
-        df_result = df.loc[df.groupby('len')['cumlen'].idxmax()]
+        df['cumlen'] = (
+            df.sort_values(['sender', 'len'], ascending=[True, False])
+            .groupby('sender')['len']
+            .cumsum()
+        )
 
-        st.line_chart(df_result, x = 'len', y = 'cumlen', color="sender")
+        df_result = df.loc[df.groupby(['sender', 'len'])['cumlen'].idxmax()]
+
+        st.line_chart(df_result, x = 'len', x_label="min. length of messages", y = 'cumlen', y_label = "total chars", color="sender")
 
         # Gruppieren & zurück in langes Format
         activity = (
@@ -90,13 +96,11 @@ else:
             .reset_index(name='count')
         )
 
-        activity_date = (
+        month_activity = (
             df.groupby(['month', 'sender'])
             .size()
             .reset_index(name='count')
         )
-
-        #activity_date = (df.groupby(['month', 'sender'], as_index=False).size().reset_index(names="count"))
 
 
         chart = alt.Chart(activity).mark_bar().encode(
@@ -117,13 +121,21 @@ else:
 
         st.altair_chart(weekday_chart, width="stretch")
 
-        date_chart = alt.Chart(activity_date).mark_line().encode(
+        highlight = alt.selection_point(name="highlight", on="pointerover", empty=False)
+
+        date_chart = alt.Chart(month_activity).mark_point().encode(
             x=alt.X('month:T', title='Month'),
             y=alt.Y('count:Q', title='# of messages'),
             color=alt.Color('sender:N', title='Sender'),
             tooltip=['month', 'sender', 'count']
-        ).properties(title="Activity")
+        ).properties(title="Activity").add_params(highlight)
 
         st.altair_chart(date_chart, width = "stretch")
 
-        st.line_chart(activity_date, x = "month", x_label = "month", y = 'count', y_label= "# of messages", color="sender", width = 'stretch')
+        activity_date = (
+            df.groupby(['date', 'sender'])
+            .size()
+            .reset_index(name='count')
+        )
+
+        st.line_chart(activity_date, x = "date", x_label = "month", y = 'count', y_label= "# of messages", color="sender", width = 'stretch')
