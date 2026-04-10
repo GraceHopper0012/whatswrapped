@@ -69,6 +69,13 @@ else:
         df['weekday'] = df['time'].dt.weekday.map(WEEKDAY_MAPPING)
         df['date'] = df['time'].dt.date
         df['month'] = pd.to_datetime(df['time'].dt.to_period("M").dt.start_time)
+        df['len'] = df['text_data'].dropna().apply(len)
+
+        df['cumlen'] = df.sort_values(by='len', ascending = False)['len'].cumsum(skipna=True)
+
+        df_result = df.loc[df.groupby('len')['cumlen'].idxmax()]
+
+        st.line_chart(df_result, x = 'len', y = 'cumlen', color="sender")
 
         # Gruppieren & zurück in langes Format
         activity = (
@@ -110,7 +117,7 @@ else:
 
         st.altair_chart(weekday_chart, width="stretch")
 
-        date_chart = alt.Chart(activity_date).mark_bar().encode(
+        date_chart = alt.Chart(activity_date).mark_line().encode(
             x=alt.X('month:T', title='Month'),
             y=alt.Y('count:Q', title='# of messages'),
             color=alt.Color('sender:N', title='Sender'),
