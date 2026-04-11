@@ -2,6 +2,8 @@ import pandas as pd
 import altair as alt
 import streamlit as st
 
+from db_interface import DBManager
+
 
 class Stat:
     SELF_NAME = ""
@@ -9,10 +11,19 @@ class Stat:
     CHAT_IDENTIFIER = None
     CONN = None
 
-    def __init__(self):
+    def __init__(self, name: str, db_man: DBManager, desc: str = "", categories = None):
+        if categories is None:
+            categories = []
+        self.categories = categories
+        self.name = name
+        self.desc = desc
+        self.db_man = db_man
         pass
 
-    def sql_query(self):
+    def load_data(self):
+        return self.db_man.get_msg_data()
+
+    '''def sql_query(self):
         df = pd.read_sql_query(f"""
         SELECT m.*
         FROM message m
@@ -24,17 +35,22 @@ class Stat:
         ORDER BY m.timestamp;
         """, Stat.CONN)
         df['sender'] = df['from_me'].apply(lambda x: Stat.SELF_NAME if x == 1 else Stat.CHAT_NAME)
-        return df
+        return df'''
 
-    def render(self):
+    def prep_data(self, df: pd.DataFrame):
         pass
 
-class CharsByLengthStat(Stat):
-    def __init__(self):
-        super().__init__()
+    def show_stat(self, data):
+        pass
 
     def render(self):
-        df = self.sql_query()
+        df = self.load_data()
+        data = self.prep_data(df)
+        self.show_stat(data)
+
+class CharsByLengthStat(Stat):
+
+    def prep_data(self, df: pd.DataFrame):
         df['len'] = df['text_data'].dropna().apply(len)
 
         df['cumlen'] = (
@@ -44,6 +60,7 @@ class CharsByLengthStat(Stat):
         )
 
         df_result = df.loc[df.groupby(['sender', 'len'])['cumlen'].idxmax()]
+
         chart = alt.Chart(df_result).mark_line().encode(
             x=alt.X('len', title="min. length of messages"),
             y=alt.Y('cumlen', title="total chars"),
@@ -51,14 +68,14 @@ class CharsByLengthStat(Stat):
             tooltip=['len', 'cumlen', 'sender']
         ).properties(title="# of chars by min. message length")
 
+        return chart
+
+    def show_stat(self, chart):
         st.altair_chart(chart, width='stretch')
 
 class MsgCountByHrStat(Stat):
-    def __init__(self):
-        super().__init__()
 
-    def render(self):
-        df = self.sql_query()
+    def prep_data(self, df: pd.DataFrame):
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['hour'] = df['time'].dt.hour
 
@@ -75,11 +92,14 @@ class MsgCountByHrStat(Stat):
             tooltip=['hour', 'sender', 'count']
         ).properties(title="total # of messages by hour")
 
+        return chart
+
+    def show_stat(self, chart):
         st.altair_chart(chart, width="stretch")
 
 class MsgCountByWeekdayStat(Stat):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name, db_man, desc = "", categories = None):
+        super().__init__(name, db_man, desc, categories)
         self.WEEKDAY_MAPPING = {
             0: "Mon",
             1: "Tue",
@@ -90,8 +110,7 @@ class MsgCountByWeekdayStat(Stat):
             6: "Sun"
         }
 
-    def render(self):
-        df = self.sql_query()
+    def prep_data(self, df: pd.DataFrame):
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['weekday'] = df['time'].dt.weekday.map(self.WEEKDAY_MAPPING)
 
@@ -101,32 +120,36 @@ class MsgCountByWeekdayStat(Stat):
             .reset_index(name='count')
         )
 
-        weekday_chart = alt.Chart(activity).mark_bar().encode(
+        chart = alt.Chart(activity).mark_bar().encode(
             x=alt.X('weekday:O', title='weekday', sort=self.WEEKDAY_MAPPING.values()),
             y=alt.Y('count:Q', title='# of messages'),
             color=alt.Color('sender:N', title='Sender'),
             tooltip=['weekday', 'sender', 'count']
         ).properties(title="total # of messages by weekday")
 
-        st.altair_chart(weekday_chart, width="stretch")
+        return chart
+
+    def show_stat(self, chart):
+        st.altair_chart(chart, width="stretch")
 
 class MsgCountByDateStat(Stat):
-    def render(self):
-        df = self.sql_query()
+    def prep_data(self, df: pd.DataFrame):
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['date'] = df['time'].dt.date
-        activity_date = (
+        chart_data = (
             df.groupby(['date', 'sender'])
             .size()
             .reset_index(name='count')
         )
 
-        st.line_chart(activity_date, x="date", x_label="month", y='count', y_label="# of messages", color="sender",
+        return chart_data
+
+    def show_stat(self, chart_data):
+        st.line_chart(chart_data, x="date", x_label="month", y='count', y_label="# of messages", color="sender",
                       width='stretch')
 
 class MsgCountByMonthDateStat(Stat):
-    def render(self):
-        df = self.sql_query()
+    def prep_data(self, df: pd.DataFrame):
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['month'] = pd.to_datetime(df['time'].dt.to_period("M").dt.start_time)
 
@@ -138,11 +161,14 @@ class MsgCountByMonthDateStat(Stat):
 
         highlight = alt.selection_point(name="highlight", on="pointerover", empty=False)
 
-        date_chart = alt.Chart(month_activity).mark_point().encode(
+        chart = alt.Chart(month_activity).mark_point().encode(
             x=alt.X('month:T', title='Month'),
             y=alt.Y('count:Q', title='# of messages'),
             color=alt.Color('sender:N', title='Sender'),
             tooltip=['month', 'sender', 'count']
         ).properties(title="Activity").add_params(highlight)
 
-        st.altair_chart(date_chart, width="stretch")
+        return chart
+
+    def show_stat(self, chart):
+        st.altair_chart(chart, width="stretch")

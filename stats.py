@@ -2,7 +2,9 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 import sqlite3
-import stat
+
+import db_interface
+import stat_modules
 
 load_dotenv()
 
@@ -43,16 +45,13 @@ else:
         chat_identifier = chat_identifier[1:]
 
         # set all static variables for the stats to work
-        stat.Stat.SELF_NAME = self_name
-        stat.Stat.CHAT_NAME = chat_name
-        stat.Stat.CHAT_IDENTIFIER = chat_identifier
-        stat.Stat.CONN = conn
+        db_man = db_interface.DBManager(conn, int(chat_identifier), chat_name, self_name)
 
-        StatMessageLength = stat.CharsByLengthStat()
-        StatMsgByHour = stat.MsgCountByHrStat()
-        StatMsgByWeekday = stat.MsgCountByWeekdayStat()
-        StatMsgByDate = stat.MsgCountByDateStat()
-        StatMsgByMonthDate = stat.MsgCountByMonthDateStat()
+        StatMessageLength = stat_modules.CharsByLengthStat("chars by message length", db_man)
+        StatMsgByHour = stat_modules.MsgCountByHrStat("messages by hr", db_man)
+        StatMsgByWeekday = stat_modules.MsgCountByWeekdayStat("messages by weekday", db_man)
+        StatMsgByDate = stat_modules.MsgCountByDateStat("messages by date", db_man)
+        StatMsgByMonthDate = stat_modules.MsgCountByMonthDateStat("messages by month", db_man)
 
         StatMessageLength.render()
         StatMsgByHour.render()
