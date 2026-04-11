@@ -1,10 +1,8 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-import pandas as pd
-import altair as alt
 import sqlite3
-import stat_logic.stat
+import stat
 
 load_dotenv()
 
@@ -45,16 +43,16 @@ else:
         chat_identifier = chat_identifier[1:]
 
         # set all static variables for the stats to work
-        stat_logic.stat.Stat.SELF_NAME = self_name
-        stat_logic.stat.Stat.CHAT_NAME = chat_name
-        stat_logic.stat.Stat.CHAT_IDENTIFIER = chat_identifier
-        stat_logic.stat.Stat.CONN = conn
+        stat.Stat.SELF_NAME = self_name
+        stat.Stat.CHAT_NAME = chat_name
+        stat.Stat.CHAT_IDENTIFIER = chat_identifier
+        stat.Stat.CONN = conn
 
-        StatMessageLength = stat_logic.stat.CharsByLengthStat()
-        StatMsgByHour = stat_logic.stat.MsgCountByHrStat()
-        StatMsgByWeekday = stat_logic.stat.MsgCountByWeekdayStat()
-        StatMsgByDate = stat_logic.stat.MsgCountByDateStat()
-        StatMsgByMonthDate = stat_logic.stat.MsgCountByMonthDateStat()
+        StatMessageLength = stat.CharsByLengthStat()
+        StatMsgByHour = stat.MsgCountByHrStat()
+        StatMsgByWeekday = stat.MsgCountByWeekdayStat()
+        StatMsgByDate = stat.MsgCountByDateStat()
+        StatMsgByMonthDate = stat.MsgCountByMonthDateStat()
 
         StatMessageLength.render()
         StatMsgByHour.render()
