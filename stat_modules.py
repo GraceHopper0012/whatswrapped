@@ -6,11 +6,21 @@ from db_interface import DBManager
 
 
 class Stat:
-    def __init__(self, name: str, db_man: DBManager, desc: str = "", categories=None):
+    def __init__(self, id, name: str, db_man: DBManager, desc: str = "", categories=None):
+        self.id = id
         self.name = name
         self.desc = desc
         self.db_man = db_man
         self.categories = categories or []
+
+    def save_in_session(self, key, data):
+        st.session_state["stat_" + self.id + "_" + key] = data
+
+    def get_from_session(self, key):
+        compiled_key = "stat_" + self.id + "_" + key
+        if compiled_key not in st.session_state:
+            return
+        return st.session_state[compiled_key]
 
     def load_data(self) -> pd.DataFrame:
         return self.db_man.get_msg_data()
@@ -32,6 +42,9 @@ class Stat:
 
 
 class CharsByLengthStat(Stat):
+    def __init__(self, name: str, db_man: DBManager, desc=None, categories=None):
+        super().__init__("charsbylengthstat", name, db_man, desc, categories)
+
     def prepare(self, df: pd.DataFrame):
         df['len'] = df['text_data'].dropna().apply(len)
 
@@ -57,6 +70,9 @@ class CharsByLengthStat(Stat):
 
 
 class MsgCountByHrStat(Stat):
+    def __init__(self, name: str, db_man: DBManager, desc=None, categories=None):
+        super().__init__("msgcountbyhrstat", name, db_man, desc, categories)
+
     def prepare(self, df: pd.DataFrame):
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['hour'] = df['time'].dt.hour
@@ -82,7 +98,7 @@ class MsgCountByHrStat(Stat):
 
 class MsgCountByWeekdayStat(Stat):
     def __init__(self, name, db_man, desc="", categories=None):
-        super().__init__(name, db_man, desc, categories)
+        super().__init__("msgcountbyweekdaystat", name, db_man, desc, categories)
         self.WEEKDAY_MAPPING = {
             0: "Mon",
             1: "Tue",
@@ -117,12 +133,20 @@ class MsgCountByWeekdayStat(Stat):
 
 
 class MsgCountByDateStat(Stat):
+    def __init__(self, name: str, db_man: DBManager, desc=None, categories=None):
+        super().__init__("msgcountbydatestat", name, db_man, desc, categories)
+
     def prepare(self, df: pd.DataFrame):
+        min_msgs = self.get_from_session("min_msgs")
+        if min_msgs is None:
+            min_msgs = 1
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['date'] = df['time'].dt.date
         grouped = df.groupby(['date', 'sender'])
         max_val = grouped.size().max()
-        minimum_msgs = st.slider("min amount of messages to consider a day", min_value=0, max_value=max_val)
+        minimum_msgs = st.slider("min amount of messages to consider a day", min_value=1, max_value=max_val,
+                                 value=min_msgs, key="msgcountbydatestat_minmsgperdateslider")
+        self.save_in_session("min_msgs", minimum_msgs)
         chart_data = (
             df.groupby(['date', 'sender'])
             .filter(lambda x: len(x) >= minimum_msgs)
@@ -146,6 +170,9 @@ class MsgCountByDateStat(Stat):
 
 
 class MsgCountByMonthDateStat(Stat):
+    def __init__(self, name: str, db_man: DBManager, desc=None, categories=None):
+        super().__init__("msgcountbymonthdatestat", name, db_man, desc, categories)
+
     def prepare(self, df: pd.DataFrame):
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['month'] = pd.to_datetime(df['time'].dt.to_period("M").dt.start_time)
