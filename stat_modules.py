@@ -177,7 +177,7 @@ class MsgCountByMonthDateStat(Stat):
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['month'] = pd.to_datetime(df['time'].dt.to_period("M").dt.start_time)
 
-        month_activity = (
+        activity = (
             df.groupby(['month', 'sender'])
             .size()
             .reset_index(name='count')
@@ -185,12 +185,66 @@ class MsgCountByMonthDateStat(Stat):
 
         highlight = alt.selection_point(name="highlight", on="pointerover", empty=False)
 
-        chart = alt.Chart(month_activity).mark_point().encode(
+        chart = alt.Chart(activity).mark_point().encode(
             x=alt.X('month:T', title='Month'),
             y=alt.Y('count:Q', title='# of messages'),
             color=alt.Color('sender:N', title='Sender'),
             tooltip=['month', 'sender', 'count']
         ).properties(title="Activity").add_params(highlight)
+
+        return chart
+
+    def display(self, chart):
+        st.altair_chart(chart, width="stretch")
+
+
+class AudioDurationStat(Stat):
+    def __init__(self, name: str, db_man: DBManager, desc=None, categories=None):
+        super().__init__("audiodurationstat", name, db_man, desc, categories)
+
+    def load_data(self) -> pd.DataFrame:
+        return self.db_man.get_voice_messages()
+
+    def prepare(self, df: pd.DataFrame):
+        activity = (
+            df.groupby(["sender"])['media_duration']
+            .sum()
+            .reset_index()
+        )
+
+        activity['duration_formatted'] = activity['media_duration'].apply(
+            lambda x: f'{x // 3600}h {(x % 3600) // 60}m {x % 60}s')
+
+        chart = alt.Chart(activity).mark_bar().encode(
+            # x=alt.X('sender', title='sender'),
+            y=alt.Y('media_duration:Q', title='duration of messages', axis=alt.Axis(title='duration', format='.0f',
+                                                                                    labelExpr="datum.value == 0 ? 0 : floor(datum.value / 3600) + 'h ' + floor(datum.value % 3600 / 60) + 'm ' + datum.value % 60 + 's'")),
+            text="duration_formatted",
+            color=alt.Color('sender:N', title='Sender'),
+            tooltip=['duration_formatted']
+        ).properties(title="audio duration")
+
+        """chart = alt.Chart(activity).mark_bar().encode(
+            y='media_duration:Q',  # Dauer als Quantitative Achse
+            color='sender',
+            tooltip=['sender', 'media_duration', 'duration_formatted']  # Tooltip für Hover
+        ).properties(
+            title='Dauer in Stunden, Minuten, Sekunden'
+        ).encode(
+            y=alt.Y('media_duration:Q', axis=alt.Axis(
+                title='Dauer',
+                format='.0f',  # Formatierung der Achsenwerte
+                labelExpr="datum == 0 ? '' : datum + 's'"  # Fügt Sekunden an die Achsenwerte an
+            ))
+        ) + alt.Chart(activity).mark_text(
+            align='center',
+            baseline='middle',
+            dy=-10  # Text über den Balken verschieben
+        ).encode(
+            #x='category',
+            y='media_duration:Q',
+            text='duration_formatted'  # Formatierten Text auf den Balken
+        )"""
 
         return chart
 
@@ -229,5 +283,9 @@ def create_stats(db_man: DBManager):
             db_man,
             desc="Monthly message activity.",
             categories=["time", "volume"],
+        ),
+        AudioDurationStat(
+            "Audio duration",
+            db_man,
         ),
     ]

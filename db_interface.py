@@ -29,6 +29,21 @@ class DBManager:
         df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
         self.msg_df = df
 
+    def get_voice_messages(self):
+        df = pd.read_sql_query(
+            f"""
+            SELECT m.*, m_med.media_duration
+            FROM message m
+            JOIN chat c ON m.chat_row_id = c._id
+            JOIN jid j ON c.jid_row_id = j._id
+            JOIN message_media m_med ON m._id = m_med.message_row_id
+            WHERE j.user = {self.chat_id} AND m.message_type = 2
+            ORDER BY m.timestamp;""",
+            self.conn,
+        )
+        df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
+        return df
+
     def get_msg_data(self):
         self.update_msg_data()
         return self.msg_df
