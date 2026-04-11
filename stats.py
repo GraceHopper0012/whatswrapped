@@ -54,40 +54,10 @@ else:
         StatMsgByHour = stat_logic.stat.MsgCountByHrStat()
         StatMsgByWeekday = stat_logic.stat.MsgCountByWeekdayStat()
         StatMsgByDate = stat_logic.stat.MsgCountByDateStat()
+        StatMsgByMonthDate = stat_logic.stat.MsgCountByMonthDateStat()
 
         StatMessageLength.render()
         StatMsgByHour.render()
         StatMsgByWeekday.render()
         StatMsgByDate.render()
-
-        query = f"""
-        SELECT m.*
-        FROM message m
-        JOIN chat c
-        ON m.chat_row_id = c._id
-        JOIN jid j
-        ON c.jid_row_id = j._id
-        WHERE j.user = '{chat_identifier}'
-        ORDER BY m.timestamp;
-        """
-        df = pd.read_sql_query(query, conn)
-        df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df['sender'] = df['from_me'].apply(lambda x: self_name if x == 1 else chat_name)
-        df['month'] = pd.to_datetime(df['time'].dt.to_period("M").dt.start_time)
-
-        month_activity = (
-            df.groupby(['month', 'sender'])
-            .size()
-            .reset_index(name='count')
-        )
-
-        highlight = alt.selection_point(name="highlight", on="pointerover", empty=False)
-
-        date_chart = alt.Chart(month_activity).mark_point().encode(
-            x=alt.X('month:T', title='Month'),
-            y=alt.Y('count:Q', title='# of messages'),
-            color=alt.Color('sender:N', title='Sender'),
-            tooltip=['month', 'sender', 'count']
-        ).properties(title="Activity").add_params(highlight)
-
-        st.altair_chart(date_chart, width = "stretch")
+        StatMsgByMonthDate.render()

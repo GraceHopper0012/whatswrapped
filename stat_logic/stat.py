@@ -123,3 +123,26 @@ class MsgCountByDateStat(Stat):
 
         st.line_chart(activity_date, x="date", x_label="month", y='count', y_label="# of messages", color="sender",
                       width='stretch')
+
+class MsgCountByMonthDateStat(Stat):
+    def render(self):
+        df = self.sql_query()
+        df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df['month'] = pd.to_datetime(df['time'].dt.to_period("M").dt.start_time)
+
+        month_activity = (
+            df.groupby(['month', 'sender'])
+            .size()
+            .reset_index(name='count')
+        )
+
+        highlight = alt.selection_point(name="highlight", on="pointerover", empty=False)
+
+        date_chart = alt.Chart(month_activity).mark_point().encode(
+            x=alt.X('month:T', title='Month'),
+            y=alt.Y('count:Q', title='# of messages'),
+            color=alt.Color('sender:N', title='Sender'),
+            tooltip=['month', 'sender', 'count']
+        ).properties(title="Activity").add_params(highlight)
+
+        st.altair_chart(date_chart, width="stretch")
