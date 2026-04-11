@@ -4,7 +4,7 @@ import pandas as pd
 
 
 class DBManager:
-    def __init__(self, conn: sqlite3.Connection, chat_id: int, chat_name: str, self_name: str):
+    def __init__(self, conn: sqlite3.Connection, chat_id: str, chat_name: str, self_name: str):
         self.conn = conn
         self.msg_df = None
         self.chat_id = chat_id
@@ -14,19 +14,21 @@ class DBManager:
     def update_msg_data(self):
         if self.msg_df is not None:
             return
-        else:
-            df = pd.read_sql_query(f"""
+
+        df = pd.read_sql_query(
+            """
             SELECT m.*
             FROM message m
-            JOIN chat c
-            ON m.chat_row_id = c._id
-            JOIN jid j
-            ON c.jid_row_id = j._id
-            WHERE j.user = '{self.chat_id}'
+            JOIN chat c ON m.chat_row_id = c._id
+            JOIN jid j ON c.jid_row_id = j._id
+            WHERE j.user = ?
             ORDER BY m.timestamp;
-            """, self.conn)
-            df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
-            self.msg_df = df
+            """,
+            self.conn,
+            params=(self.chat_id,),
+        )
+        df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
+        self.msg_df = df
 
     def get_msg_data(self):
         self.update_msg_data()
