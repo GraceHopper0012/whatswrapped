@@ -1,7 +1,8 @@
 import os
+import sqlite3
+
 import streamlit as st
 from dotenv import load_dotenv
-import sqlite3
 
 import db_interface
 import stat_modules
@@ -32,10 +33,13 @@ else:
 
         chat_identifier = st.text_input(
             "Telephone number of chat with country code and '+'",
+            key="phone_input",
             value=st.session_state.chat_identifier,
         ).replace(" ", "")
-        chat_name = st.text_input("Optionally a nickname for the chat", value=st.session_state.chat_name)
-        self_name = st.text_input("Optionally a nickname for yourself", value=st.session_state.self_name)
+        chat_name = st.text_input("Optionally a nickname for the chat", key="chat_name_input",
+                                  value=st.session_state.chat_name)
+        self_name = st.text_input("Optionally a nickname for yourself", key="self_name_input",
+                                  value=st.session_state.self_name)
 
         if st.button("Let's go") or chat_identifier != "":
             st.session_state.chat_identifier = chat_identifier
@@ -55,6 +59,9 @@ else:
             available_stats = stat_modules.create_stats(db_man)
             stat_options = [stat.name for stat in available_stats]
 
+            if st.button("Select all"):
+                selected_stats = stat_options
+
             default_selection = (
                 stat_options if not st.session_state.selected_stats else st.session_state.selected_stats
             )
@@ -62,6 +69,7 @@ else:
                 "Choose stats to show",
                 stat_options,
                 default=default_selection,
+                key="selected_stats_multiselect"
             )
             st.session_state.selected_stats = selected_stats
 

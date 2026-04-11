@@ -16,16 +16,15 @@ class DBManager:
             return
 
         df = pd.read_sql_query(
-            """
+            f"""
             SELECT m.*
             FROM message m
             JOIN chat c ON m.chat_row_id = c._id
             JOIN jid j ON c.jid_row_id = j._id
-            WHERE j.user = ?
+            WHERE j.user = {self.chat_id}
             ORDER BY m.timestamp;
             """,
             self.conn,
-            params=(self.chat_id,),
         )
         df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
         self.msg_df = df

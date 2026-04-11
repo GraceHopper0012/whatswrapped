@@ -1,5 +1,5 @@
-import pandas as pd
 import altair as alt
+import pandas as pd
 import streamlit as st
 
 from db_interface import DBManager
@@ -120,8 +120,13 @@ class MsgCountByDateStat(Stat):
     def prepare(self, df: pd.DataFrame):
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['date'] = df['time'].dt.date
+        grouped = df.groupby(['date', 'sender'])
+        max_val = grouped.size().max()
+        minimum_msgs = st.slider("min amount of messages to consider a day", min_value=0, max_value=max_val)
         chart_data = (
             df.groupby(['date', 'sender'])
+            .filter(lambda x: len(x) >= minimum_msgs)
+            .groupby(['date', 'sender'])
             .size()
             .reset_index(name='count')
         )
