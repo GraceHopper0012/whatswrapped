@@ -11,6 +11,22 @@ class DBManager:
         self.chat_name = chat_name
         self.self_name = self_name
 
+    def test_msg_data(self):
+        df = pd.read_sql_query(
+            f"""
+            SELECT m.*
+            FROM message m
+            JOIN chat c ON m.chat_row_id = c._id
+            JOIN jid j ON c.jid_row_id = j._id
+            WHERE j.user = {self.chat_id}
+            ORDER BY m.timestamp;
+            """,
+            self.conn,
+        )
+        if len(df) == 0:
+            return False
+        return True
+
     def update_msg_data(self):
         if self.msg_df is not None:
             return

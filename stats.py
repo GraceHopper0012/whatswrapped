@@ -56,26 +56,27 @@ else:
                 chat_identifier = chat_identifier[1:]
 
             db_man = db_interface.DBManager(conn, chat_identifier, chat_name, self_name)
-            available_stats = stat_modules.create_stats(db_man)
-            stat_options = [stat.name for stat in available_stats]
+            if db_man.test_msg_data():
+                available_stats = stat_modules.create_stats(db_man)
+                stat_options = [stat.name for stat in available_stats]
 
-            if st.button("Select all"):
-                selected_stats = stat_options
+                if st.button("Select all"):
+                    selected_stats = stat_options
 
-            default_selection = (
-                stat_options if not st.session_state.selected_stats else st.session_state.selected_stats
-            )
-            selected_stats = st.multiselect(
-                "Choose stats to show",
-                stat_options,
-                default=default_selection,
-                key="selected_stats_multiselect"
-            )
-            st.session_state.selected_stats = selected_stats
+                default_selection = (
+                    stat_options if not st.session_state.selected_stats else st.session_state.selected_stats
+                )
+                selected_stats = st.multiselect(
+                    "Choose stats to show",
+                    stat_options,
+                    default=default_selection,
+                    key="selected_stats_multiselect"
+                )
+                st.session_state.selected_stats = selected_stats
 
-            if selected_stats:
-                for stat in available_stats:
-                    if stat.name in selected_stats:
-                        stat.render()
-            else:
-                st.info("Pick one or more stats to display.")
+                if selected_stats:
+                    for stat in available_stats:
+                        if stat.name in selected_stats:
+                            stat.render()
+                else:
+                    st.info("Pick one or more stats to display.")
