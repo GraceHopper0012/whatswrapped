@@ -1,19 +1,35 @@
-# 🎈 Blank app template
+# WhatsWrapped
 
-A simple Streamlit app template for you to modify!
+A Streamlit app for visualizing WhatsApp chat stats from an unencrypted exported SQLite database.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+## Project structure
 
-### How to run it on your own machine
+- `streamlit_app.py`: app entrypoint and page navigation.
+- `upload.py`: upload page for placing the WhatsApp database into the configured storage directory.
+- `stats.py`: stats page UI and state handling for chat selection + stat rendering.
+- `stat_modules.py`: chart/stat definitions and registration list.
+- `db_interface.py`: database access layer and query helpers.
+- `config.py`: centralized environment/config loading (`WW_UPLOAD_DIR`, `WW_DB_NAME`).
 
-1. Install the requirements
+## Environment variables
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+Create a `.env` file (or set variables in your environment):
 
-2. Run the app
+```bash
+WW_UPLOAD_DIR=/path/to/upload/dir
+WW_DB_NAME=msgstore.db
+```
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+## Run locally
+
+1. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Start the app
+
+```bash
+streamlit run streamlit_app.py
+```
