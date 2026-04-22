@@ -2,26 +2,20 @@ import os
 import sqlite3
 
 import streamlit as st
-from dotenv import load_dotenv
 
 import db_interface
 import stat_modules
+from config import load_config
 
-load_dotenv()
-
-UPLOAD_DIR = os.getenv("WW_UPLOAD_DIR")
-DB_NAME = os.getenv("WW_DB_NAME")
-
-if not UPLOAD_DIR or not DB_NAME:
-    st.error("Environment variables WW_UPLOAD_DIR and WW_DB_NAME must be defined.")
+try:
+    cfg = load_config()
+except ValueError as exc:
+    st.error(str(exc))
 else:
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    DB_PATH = os.path.join(UPLOAD_DIR, DB_NAME)
-
-    if not os.path.exists(DB_PATH):
+    if not os.path.exists(cfg.db_path):
         st.page_link("upload.py", label="You have to first upload your DB")
     else:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(cfg.db_path)
         if "chat_identifier" not in st.session_state:
             st.session_state.chat_identifier = ""
         if "chat_name" not in st.session_state:

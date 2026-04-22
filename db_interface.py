@@ -11,53 +11,47 @@ class DBManager:
         self.chat_name = chat_name
         self.self_name = self_name
 
-    def test_msg_data(self):
-        df = pd.read_sql_query(
-            f"""
+    def _read_messages(self) -> pd.DataFrame:
+        return pd.read_sql_query(
+            """
             SELECT m.*
             FROM message m
             JOIN chat c ON m.chat_row_id = c._id
             JOIN jid j ON c.jid_row_id = j._id
-            WHERE j.user = {self.chat_id}
+            WHERE j.user = ?
             ORDER BY m.timestamp;
             """,
             self.conn,
+            params=(self.chat_id,),
         )
-        if len(df) == 0:
-            return False
-        return True
+
+    def test_msg_data(self):
+        df = self._read_messages()
+        return len(df) != 0
 
     def update_msg_data(self):
         if self.msg_df is not None:
             return
 
-        df = pd.read_sql_query(
-            f"""
-            SELECT m.*
-            FROM message m
-            JOIN chat c ON m.chat_row_id = c._id
-            JOIN jid j ON c.jid_row_id = j._id
-            WHERE j.user = {self.chat_id}
-            ORDER BY m.timestamp;
-            """,
-            self.conn,
-        )
-        df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
+        df = self._read_messages()
+        df["sender"] = df["from_me"].apply(lambda x: self.self_name if x == 1 else self.chat_name)
         self.msg_df = df
 
     def get_voice_messages(self):
         df = pd.read_sql_query(
-            f"""
+            """
             SELECT m.*, m_med.media_duration
             FROM message m
             JOIN chat c ON m.chat_row_id = c._id
             JOIN jid j ON c.jid_row_id = j._id
             JOIN message_media m_med ON m._id = m_med.message_row_id
-            WHERE j.user = {self.chat_id} AND m.message_type = 2
-            ORDER BY m.timestamp;""",
+            WHERE j.user = ? AND m.message_type = 2
+            ORDER BY m.timestamp;
+            """,
             self.conn,
+            params=(self.chat_id,),
         )
-        df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
+        df["sender"] = df["from_me"].apply(lambda x: self.self_name if x == 1 else self.chat_name)
         return df
 
     def get_msg_data(self):
