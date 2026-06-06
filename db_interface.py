@@ -10,6 +10,33 @@ class DBManager:
         self.chat_id = chat_id
         self.chat_name = chat_name
         self.self_name = self_name
+        self.jids = self.get_all_jids(self.chat_id)
+
+    def get_all_jids(self, chat_id):
+        df = pd.read_sql_query(
+            f"""
+            SELECT j._id
+            FROM jid j
+            WHERE
+            (
+                j.server = 'lid'
+                AND EXISTS (
+                    SELECT 1
+                    FROM jid_map jm
+                    JOIN jid AS j2
+                        ON j2._id = jm.jid_row_id
+                    WHERE jm.lid_row_id = j._id
+                      AND j2.user = {self.chat_id}
+                )
+            )
+            OR
+            (
+                j.server != 'lid'
+                AND j.user = {self.chat_id}
+            )""",
+            self.conn,
+        )
+        return df['_id'].tolist()
 
     def test_msg_data(self):
         df = pd.read_sql_query(
@@ -37,7 +64,23 @@ class DBManager:
             FROM message m
             JOIN chat c ON m.chat_row_id = c._id
             JOIN jid j ON c.jid_row_id = j._id
-            WHERE j.user = {self.chat_id}
+            WHERE
+            (
+                j.server = 'lid'
+                AND EXISTS (
+                    SELECT 1
+                    FROM jid_map jm
+                    JOIN jid AS j2
+                        ON j2._id = jm.jid_row_id
+                    WHERE jm.lid_row_id = j._id
+                      AND j2.user = {self.chat_id}
+                )
+            )
+            OR
+            (
+                j.server != 'lid'
+                AND j.user = {self.chat_id}
+            )
             ORDER BY m.timestamp;
             """,
             self.conn,
@@ -53,7 +96,24 @@ class DBManager:
             JOIN chat c ON m.chat_row_id = c._id
             JOIN jid j ON c.jid_row_id = j._id
             JOIN message_media m_med ON m._id = m_med.message_row_id
-            WHERE j.user = {self.chat_id} AND (m.message_type = 2 OR m.message_type = 81)
+            WHERE
+            (
+                j.server = 'lid'
+                AND EXISTS (
+                    SELECT 1
+                    FROM jid_map jm
+                    JOIN jid AS j2
+                        ON j2._id = jm.jid_row_id
+                    WHERE jm.lid_row_id = j._id
+                      AND j2.user = {self.chat_id}
+                )
+            )
+            OR
+            (
+                j.server != 'lid'
+                AND j.user = {self.chat_id}
+            )
+            AND (m.message_type = 2 OR m.message_type = 81)
             ORDER BY m.timestamp;""",
             self.conn,
         )
