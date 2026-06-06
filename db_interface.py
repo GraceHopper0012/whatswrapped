@@ -53,8 +53,37 @@ class DBManager:
             JOIN chat c ON m.chat_row_id = c._id
             JOIN jid j ON c.jid_row_id = j._id
             JOIN message_media m_med ON m._id = m_med.message_row_id
-            WHERE j.user = {self.chat_id} AND m.message_type = 2
+            WHERE j.user = {self.chat_id} AND (m.message_type = 2 OR m.message_type = 81)
             ORDER BY m.timestamp;""",
+            self.conn,
+        )
+        df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
+        return df
+
+    def get_calls(self):
+        df = pd.read_sql_query(
+            f"""
+            SELECT cl.*
+            FROM call_log cl
+            JOIN jid j ON cl.jid_row_id = j._id
+            WHERE
+            (
+                j.server = 'lid'
+                AND EXISTS (
+                    SELECT 1
+                    FROM jid_map jm
+                    JOIN jid AS j2
+                        ON j2._id = jm.jid_row_id
+                    WHERE jm.lid_row_id = j._id
+                      AND j2.user = {self.chat_id}
+                )
+            )
+            OR
+            (
+                j.server != 'lid'
+                AND j.user = {self.chat_id}
+            )
+            ORDER BY cl.timestamp;""",
             self.conn,
         )
         df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)

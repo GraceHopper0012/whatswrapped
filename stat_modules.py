@@ -122,7 +122,7 @@ class MsgCountByWeekdayStat(Stat):
         chart = alt.Chart(activity).mark_bar().encode(
             x=alt.X('weekday:O', title='weekday', sort=list(self.WEEKDAY_MAPPING.values())),
             y=alt.Y('count:Q', title='# of messages'),
-            color=alt.Color('sender:N', title='Sender'),
+            color=alt.Color('sender:N', title='Sender', legend=alt.Legend(orient='bottom')),
             tooltip=['weekday', 'sender', 'count']
         ).properties(title="total # of messages by weekday")
 
@@ -138,6 +138,7 @@ class MsgCountByDateStat(Stat):
 
     def prepare(self, df: pd.DataFrame):
         min_msgs = self.get_from_session("min_msgs")
+        rolling_w = self.get_from_session("rolling_window")
         if min_msgs is None:
             min_msgs = 1
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
@@ -146,7 +147,10 @@ class MsgCountByDateStat(Stat):
         max_val = grouped.size().max()
         minimum_msgs = st.slider("min amount of messages to consider a day", min_value=1, max_value=max_val,
                                  value=min_msgs, key="msgcountbydatestat_minmsgperdateslider")
+        rolling_window = st.slider("smoothing", min_value=1, max_value=100, value=rolling_w,
+                                   key="msgcountbydatestat_rollingwindowslider")
         self.save_in_session("min_msgs", minimum_msgs)
+        self.save_in_session("rolling_window", rolling_window)
         chart_data = (
             df.groupby(['date', 'sender'])
             .filter(lambda x: len(x) >= minimum_msgs)
@@ -154,6 +158,9 @@ class MsgCountByDateStat(Stat):
             .size()
             .reset_index(name='count')
         )
+
+        chart_data['count'] = chart_data['count'].rolling(window=rolling_window, center=True).mean()
+        chart_data = chart_data.dropna(subset=["count"])
 
         return chart_data
 
@@ -185,12 +192,33 @@ class MsgCountByMonthDateStat(Stat):
 
         highlight = alt.selection_point(name="highlight", on="pointerover", empty=False)
 
-        chart = alt.Chart(activity).mark_point().encode(
+        hover = alt.selection_point(
+            fields=['month'],
+            nearest=True,
+            on='pointerover',
+            empty='none'
+        )
+
+        points = alt.Chart(activity).mark_point().encode(
+            x='month:T', y='count:Q',
+            opacity=alt.condition(hover, alt.value(1), alt.value(0))
+        )
+
+        tooltips = alt.Chart(activity).mark_rule().encode(
+            x='month:T',
+            # opacity = alt.condition(hover,alt.value(0.3),alt.value(9)),
+            opacity=alt.value(0),
+            tooltip=['month:T', 'count:Q'],
+        ).add_params(hover)
+
+        line = alt.Chart(activity).mark_line().encode(
             x=alt.X('month:T', title='Month'),
             y=alt.Y('count:Q', title='# of messages'),
             color=alt.Color('sender:N', title='Sender'),
             tooltip=['month', 'sender', 'count']
-        ).properties(title="Activity").add_params(highlight)
+        ).properties(title="Activity")
+
+        chart = line + points + tooltips
 
         return chart
 
@@ -285,7 +313,7 @@ def create_stats(db_man: DBManager):
             categories=["time", "volume"],
         ),
         AudioDurationStat(
-            "Audio duration",
+            "Voice messages duration",
             db_man,
         ),
     ]
