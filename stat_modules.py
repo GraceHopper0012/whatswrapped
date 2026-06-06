@@ -171,6 +171,7 @@ class MsgCountByDateStat(Stat):
             .size()
             .reset_index(name='count')
         )
+
         if not smooth_inactive:
             chart_data = (
                 chart_data
@@ -178,7 +179,12 @@ class MsgCountByDateStat(Stat):
                 .reindex(full_index, fill_value=0)
                 .reset_index()
             )
-        chart_data['count'] = chart_data['count'].rolling(window=rolling_window, center=True).mean()
+
+        chart_data['count'] = (
+            chart_data.groupby('sender')['count']
+            .transform(lambda x: x.rolling(rolling_window, center=True).mean())
+        )
+
         chart_data = chart_data.dropna(subset=["count"])
 
         return chart_data
