@@ -143,7 +143,7 @@ class MsgCountByDateStat(Stat):
         if min_msgs is None:
             min_msgs = 1
         if smooth_ina is None:
-            smooth_ina = True
+            smooth_ina = False
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         df['date'] = df['time'].dt.date
         grouped = df.groupby(['date', 'sender'])
@@ -152,7 +152,7 @@ class MsgCountByDateStat(Stat):
                                  value=min_msgs, key="msgcountbydatestat_minmsgperdateslider")
         rolling_window = st.slider("smoothing", min_value=1, max_value=100, value=rolling_w,
                                    key="msgcountbydatestat_rollingwindowslider")
-        smooth_inactive = st.checkbox("smooth inactivity?", value=smooth_ina,
+        smooth_inactive = st.checkbox("smooth inactivity? works best with smoothing <50 (estimate)", value=smooth_ina,
                                       key="msgcountbydatestat_smoothinactivecheckbox")
         self.save_in_session("min_msgs", minimum_msgs)
         self.save_in_session("rolling_window", rolling_window)
@@ -186,6 +186,9 @@ class MsgCountByDateStat(Stat):
         )
 
         chart_data = chart_data.dropna(subset=["count"])
+        valid = chart_data['count'] >= 1
+        chart_data = chart_data[valid.groupby(
+            chart_data['sender']).cummax()]  # ignore all days with less than 1 message at the beginning of the graph
 
         return chart_data
 
