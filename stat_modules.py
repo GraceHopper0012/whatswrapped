@@ -334,27 +334,32 @@ class CallDurationStat(Stat):
             tooltip=['duration_formatted']
         ).properties(title="call duration")
 
-        """chart = alt.Chart(activity).mark_bar().encode(
-            y='media_duration:Q',  # Dauer als Quantitative Achse
-            color='sender',
-            tooltip=['sender', 'media_duration', 'duration_formatted']  # Tooltip für Hover
-        ).properties(
-            title='Dauer in Stunden, Minuten, Sekunden'
-        ).encode(
-            y=alt.Y('media_duration:Q', axis=alt.Axis(
-                title='Dauer',
-                format='.0f',  # Formatierung der Achsenwerte
-                labelExpr="datum == 0 ? '' : datum + 's'"  # Fügt Sekunden an die Achsenwerte an
-            ))
-        ) + alt.Chart(activity).mark_text(
-            align='center',
-            baseline='middle',
-            dy=-10  # Text über den Balken verschieben
-        ).encode(
-            #x='category',
-            y='media_duration:Q',
-            text='duration_formatted'  # Formatierten Text auf den Balken
-        )"""
+        return chart
+
+    def display(self, chart):
+        st.altair_chart(chart, width="stretch")
+
+
+class EditCountStat(Stat):
+    def __init__(self, name: str, db_man: DBManager, desc=None, categories=None):
+        super().__init__("editcountstat", name, db_man, desc, categories)
+
+    def load_data(self) -> pd.DataFrame:
+        return self.db_man.get_edits()
+
+    def prepare(self, df: pd.DataFrame):
+        activity = (
+            df.groupby(["sender"])
+            .size()
+            .reset_index(name="count")
+        )
+
+        chart = alt.Chart(activity).mark_bar().encode(
+            # x=alt.X('sender', title='sender'),
+            y=alt.Y('count:Q', title='# of edits'),
+            color=alt.Color('sender:N', title='Sent by'),
+            tooltip=['sender', 'count']
+        ).properties(title="# of edits")
 
         return chart
 
@@ -402,5 +407,10 @@ def create_stats(db_man: DBManager):
         CallDurationStat(
             "Calls duration",
             db_man,
-        )
+        ),
+
+        EditCountStat(
+            "Edit count",
+            db_man,
+        ),
     ]

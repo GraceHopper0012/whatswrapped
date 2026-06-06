@@ -54,6 +54,38 @@ class DBManager:
             return False
         return True
 
+    def get_edits(self):
+        df = pd.read_sql_query(
+            f"""
+            SELECT mei.*, m.from_me
+            FROM message m
+            JOIN chat c ON m.chat_row_id = c._id
+            JOIN jid j ON c.jid_row_id = j._id
+            JOIN message_edit_info mei ON m._id = mei.message_row_id
+            WHERE
+            (
+                j.server = 'lid'
+                AND EXISTS (
+                    SELECT 1
+                    FROM jid_map jm
+                    JOIN jid AS j2
+                        ON j2._id = jm.jid_row_id
+                    WHERE jm.lid_row_id = j._id
+                      AND j2.user = {self.chat_id}
+                )
+            )
+            OR
+            (
+                j.server != 'lid'
+                AND j.user = {self.chat_id}
+            )
+            ORDER BY mei.edited_timestamp;""",
+            self.conn,
+        )
+
+        df['sender'] = df['from_me'].apply(lambda x: self.self_name if x == 1 else self.chat_name)
+        return df
+
     def update_msg_data(self):
         if self.msg_df is not None:
             return
