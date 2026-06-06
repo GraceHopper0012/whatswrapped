@@ -157,13 +157,7 @@ class MsgCountByDateStat(Stat):
         self.save_in_session("min_msgs", minimum_msgs)
         self.save_in_session("rolling_window", rolling_window)
         self.save_in_session("smooth_inactive", smooth_inactive)
-        if not smooth_inactive:
-            full_dates = pd.date_range(df['date'].min(), df['date'].max(), freq='D')
-            senders = df['sender'].unique()
-            full_index = pd.MultiIndex.from_product(
-                [full_dates, senders],
-                names=['date', 'sender']
-            )
+
         chart_data = (
             df.groupby(['date', 'sender'])
             .filter(lambda x: len(x) >= minimum_msgs)
@@ -173,6 +167,12 @@ class MsgCountByDateStat(Stat):
         )
 
         if not smooth_inactive:
+            full_dates = pd.date_range(chart_data['date'].min(), chart_data['date'].max(), freq='D')
+            senders = chart_data['sender'].unique()
+            full_index = pd.MultiIndex.from_product(
+                [full_dates, senders],
+                names=['date', 'sender']
+            )
             chart_data = (
                 chart_data
                 .set_index(['date', 'sender'])
